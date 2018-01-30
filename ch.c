@@ -46,79 +46,84 @@ int main (void){
 
         // Check if is a variable declaration
         char *pt = strchr(line, '=');
-        //Checking the presence of a for
-        char *ptF = strstr(line, "for");
+        
         if(pt) {
             // 2. Gestion des variables
             char *var = strtok(line, eq);
             char *val = strtok(NULL, eq);
             setenv(var, val, 0);
-        }else if(ptF) {
+        }else if(strstr(line, "for")) {
+            //Handling for loops
+            
             //initialization and body of for loop in two strings
             //to be parsed differently
             char *init = strtok(line, semiC);
             char *body = strtok(NULL, dn);
             
+            //Haven't found a more ingenious/efficient way to predict number of 
+            //tokens in the line aside from counting spaces...yet 
+            //TODO: parse both parts of the loop/make a more generic method
+            //to parse all the things
         }else {
             // Count number of spaces - better option would be to precount number
             // of tokens
             int i, spaces;
             for (i=0, spaces=0; i < len; i++) {
             spaces += (line[i] == ' ');
-        }
-        
-        // Parse arguments
-        int j=0;
-        char *args[spaces+2]; // +1 word than space, +1 for NULL at the end
-        char *token = strtok(line, s);
-        while(token) {
-            // Check if token is a variable
-            if(token[0] == '$') {
-              token = getenv(strtok(token, "$"));
             }
-            args[j] = token;
-            token = strtok(NULL, s);
-            j++;
-        }
-        args[j] = NULL;
-          
-        //Special cases for exit and cd since we want them to affect the process
-        //that calls them instead of having them affect its child
-        if(strcmp(args[0], "exit") == 0){break;}
-          
-        if(strcmp(args[0], "cd") == 0){
-            int ret = chdir(args[1]);
-            if(ret != 0){fprintf (stdout, "invalid path\n");}         
-        }
-        else{
-          
-            //1. Exécuter la commande - echo / cat / ls / man / tail
-            pid_t  pid;
-            pid = fork();
-                    
-            if (pid < 0) {
-                fprintf (stderr, "Fork failed");
+            
+            // Parse arguments
+            int j=0;
+            char *args[spaces+2]; // +1 word than space, +1 for NULL at the end
+            char *token = strtok(line, s);
+            while(token) {
+                // Check if token is a variable
+                if(token[0] == '$') {
+                  token = getenv(strtok(token, "$"));
+                }
+                args[j] = token;
+                token = strtok(NULL, s);
+                j++;
             }
-            if (pid == 0) {
-                //Child process
-                //Some commands like sudo do not work; maybe a different exec
-                //command is required for some exceptions? However, I can do
-                //silly stuff like playing Doki Doki Litterature Club from this
-                //shell while skipping the use of sudo. Hurray for security
-                //loopholes!!
-                execvp(args[0], args);
+            args[j] = NULL;
+              
+            //Special cases for exit and cd since we want them to affect the process
+            //that calls them instead of having them affect its child
+            if(strcmp(args[0], "exit") == 0){
+                break;
+            }else if(strcmp(args[0], "cd") == 0){
+                int ret = chdir(args[1]);
+                if(ret != 0){fprintf (stdout, "invalid path\n");}         
             }
-            else {
-                //Parent process
-                wait(NULL);
-                fprintf (stdout, "Parent finished\n");
+            else{
+              
+                //1. Exécuter la commande - echo / cat / ls / man / tail
+                pid_t  pid;
+                pid = fork();
+                        
+                if (pid < 0) {
+                    fprintf (stderr, "Fork failed");
+                }
+                if (pid == 0) {
+                    //Child process
+                    //Some commands like sudo do not work; maybe a different exec
+                    //command is required for some exceptions? However, I can do
+                    //silly stuff like playing Doki Doki Litterature Club from this
+                    //shell while skipping the use of sudo. Hurray for security
+                    //loopholes!!
+                    execvp(args[0], args);
+                }
+                else {
+                    //Parent process
+                    wait(NULL);
+                    fprintf (stdout, "Parent finished\n");
+                }
+              
             }
-          
-        }
 
-        //TODO: 3. For 
-        //TODO: 4. && et ||
-        //chercher le && ou ||, puis tokenize?
+            //TODO: 3. For 
+            //TODO: 4. && et ||
+            //chercher le && ou ||, puis tokenize?
 
         }
     }
