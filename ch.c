@@ -16,7 +16,7 @@ int delimCounter(char *string, const char *delim);
 
 void ezParser(char *srcString, char *dstArray[], size_t dstSize, const char *delim);
 
-void executeCommand(char *args[]);
+void executeCommand(char *args[], int argsSize);
 
 int main (void){
     fprintf (stdout, "%% ");
@@ -151,7 +151,7 @@ int main (void){
             }
             else{
               
-                executeCommand(args);                              
+                executeCommand(args, spaces+2);                              
             }
  
             //TODO: 4. && et ||
@@ -192,22 +192,51 @@ void ezParser(char *srcString, char *dstArray[], size_t dstSize, const char *del
 
 }
 
-void executeCommand(char *args[]){
+void executeCommand(char *args[], int argsSize){
     
     //1. Crée un processus qui exécute la commande
     pid_t  pid;
     pid = fork();
-            
+
+    char *firstcmd[argsSize], *rest[argsSize];
+    //parse subcommands 
+
+    
+
     if (pid < 0) {
         fprintf (stderr, "Fork failed");
     }
     if (pid == 0) {
         //Child process
         execvp(args[0], args);
+	perror(args[0]);
+	exit(1);
     }
     else {
         //Parent process
-        wait(NULL);
+	int waitError;
+        wait(&waitError);
+	if(waitError) {
+		fprintf (stdout, "Child failed");
+	}
+	//wait(NULL);
         fprintf (stdout, "Parent finished\n");
     }
+}
+
+void parseSubcommand(char *args[], int argsSize, char *firstcmd[], char *rest[]) {
+	int isFirst = 1;
+	int firstcmdSize = 0;
+	for(int i=0; i<argsSize; i++) {
+		if(strcmp(args[i], "||") == 0 || strcmp(args[i], "&&") == 0) {
+			isFirst = 0;
+			firstcmdSize = i;
+		}
+		if(isFirst) {
+			firstcmd[i] = args[i];
+		}
+		else {
+			rest[i-(firstcmdSize+1)] = args[i];
+		}
+	}
 }
