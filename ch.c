@@ -199,9 +199,23 @@ void executeCommand(char *args[], int argsSize){
     pid = fork();
 
     char *firstcmd[argsSize], *rest[argsSize];
-    //parse subcommands 
-
-    
+    char *separator = NULL;
+    // 1. determine the separator type
+    int i = 0, offset = 0;
+    while(args[i]) {
+    	if(!separator && (strcmp(args[i], "&&") == 0 || strcmp(args[i], "||") == 0)) {
+		separator = args[i];
+		offset = i+1;
+		args[i] = NULL;
+	} else if(offset != 0) {
+		rest[i-offset] = args[i];
+	}
+	i++;
+    }
+    if(offset > 0) {
+	rest[i-offset] = NULL;
+    }
+    // 2. parse first command/rest
 
     if (pid < 0) {
         fprintf (stderr, "Fork failed");
@@ -216,10 +230,13 @@ void executeCommand(char *args[], int argsSize){
         //Parent process
 	int waitError;
         wait(&waitError);
-	if(waitError) {
-		fprintf (stdout, "Child failed");
+
+	if(separator && strcmp(separator, "||") == 0 && waitError) {
+		executeCommand(rest, argsSize-offset);
 	}
-	//wait(NULL);
+	if(separator && strcmp(separator, "&&") == 0 && !waitError) {
+		executeCommand(rest, argsSize-offset);
+	}
         fprintf (stdout, "Parent finished\n");
     }
 }
