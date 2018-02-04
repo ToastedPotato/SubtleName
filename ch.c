@@ -133,12 +133,7 @@ int main (void){
             char *args[spaces+2]; // +1 word than space, +1 for NULL at the end
             ezParser(line, args, spaces+2, s);
                           
-            exitValue = executeCommand(args, spaces+2);               
-            
- 
-            //TODO: 4. && et ||
-            //chercher le && ou ||, puis tokenize?
-
+            exitValue = executeCommand(args, spaces+2);
         }
     }
     fprintf (stdout, "Bye!\n");
@@ -174,6 +169,86 @@ void ezParser(char *srcString, char *dstArray[], size_t dstSize, const char *del
 }
 
 int executeCommand(char *args[], int argsSize){
+    
+    //1. Crée un processus qui exécute la commande
+    pid_t  pid;
+    pid = fork();
+
+    char *rest[argsSize];
+    char *separator = NULL;
+    // determine the separator type and parse first command
+    int i = 0, offset = 0;
+    while(args[i]) {
+    	if(!separator && (strcmp(args[i], "&&") == 0 || strcmp(args[i], "||") == 0)) {
+		separator = args[i];
+		offset = i+1;
+		args[i] = NULL;
+	} else if(offset != 0) {
+		rest[i-offset] = args[i];
+	}
+	i++;
+    }
+    if(offset > 0) {
+	rest[i-offset] = NULL;
+    }
+
+    if (pid < 0) {
+        fprintf (stderr, "Fork failed");
+    }
+    if (pid == 0) {
+        //Child process
+        if(strcmp(args[0], "cd") == 0){
+            //so that the || and && operators can be used on the cd command
+            chdir(args[1]);
+        }else if(strcmp(args[0], "exit") != 0){execvp(args[0], args);}
+	    perror(args[0]);
+	    exit(1);
+    }
+    else {
+        //Parent process
+        
+        //because cd and exit need to affect the parent, ie: the shell
+        if(strcmp(args[0], "cd") == 0){
+            chdir(args[1]);
+        }else if(strcmp(args[0], "exit") == 0){ return 0;}
+
+	int waitError;
+        wait(&waitError);
+
+	// && and || logic
+	while(separator) {
+		if(strcmp(separator, "||") == 0 && waitError) {
+			separator = NULL;
+			executeCommand(rest, argsSize-offset);
+		} else if(strcmp(separator, "&&") == 0 && !waitError) {
+			separator = NULL;
+			executeCommand(rest, argsSize-offset);
+		} else {
+			//Get next separator and command
+			separator = NULL;
+			int j = 0, nextOffset = 0;
+			while(rest[j]) {
+				if(!separator &&
+					(strcmp(rest[j], "&&") == 0 || strcmp(rest[j], "||") == 0) ) {
+					separator = rest[j];
+					nextOffset = j+1;
+					offset += nextOffset;
+				} else if (nextOffset > 0) {
+					rest[j-nextOffset] = rest[j];
+				}
+				j++;
+			}
+			if(nextOffset > 0) {
+				rest[j-nextOffset] = NULL;
+			}
+		}
+	}
+        fprintf (stdout, "Parent finished\n");
+    }
+    return 1;
+}
+
+int executeCommandBu(char *args[], int argsSize){
     
     //1. Crée un processus qui exécute la commande
     pid_t  pid;
