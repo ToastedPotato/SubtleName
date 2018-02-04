@@ -63,7 +63,7 @@ int main (void){
             
         }else if(strstr(line, "for ") == line){
             //Handling for loops
-            if(strcmp(line+(len-7), "; done")){
+            if(strstr(line, "; done") == line+(len-6)){
                 
                 //initialization and body of for loop in two strings
                 //to be parsed differently
