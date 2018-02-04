@@ -169,14 +169,10 @@ void ezParser(char *srcString, char *dstArray[], size_t dstSize, const char *del
 }
 
 int executeCommand(char *args[], int argsSize){
-    
-    //1. Crée un processus qui exécute la commande
-    pid_t  pid;
-    pid = fork();
 
+    // Trouve le premier separateur (si existe) et isole la premiere commande
     char *rest[argsSize];
     char *separator = NULL;
-    // determine the separator type and parse first command
     int i = 0, offset = 0;
     while(args[i]) {
     	if(!separator && (strcmp(args[i], "&&") == 0 || strcmp(args[i], "||") == 0)) {
@@ -191,6 +187,10 @@ int executeCommand(char *args[], int argsSize){
     if(offset > 0) {
 	rest[i-offset] = NULL;
     }
+
+    //1. Crée un processus qui exécute la commande
+    pid_t  pid;
+    pid = fork();
 
     if (pid < 0) {
         fprintf (stderr, "Fork failed");
@@ -215,8 +215,8 @@ int executeCommand(char *args[], int argsSize){
 	int waitError;
         wait(&waitError);
 
-	// && and || logic
-	while(separator) {
+	// Logique du && et ||
+	while(separator && rest[0]) {
 		if(strcmp(separator, "||") == 0 && waitError) {
 			separator = NULL;
 			executeCommand(rest, argsSize-offset);
@@ -243,84 +243,8 @@ int executeCommand(char *args[], int argsSize){
 			}
 		}
 	}
+	//TODO remove
         fprintf (stdout, "Parent finished\n");
     }
     return 1;
-}
-
-int executeCommandBu(char *args[], int argsSize){
-    
-    //1. Crée un processus qui exécute la commande
-    pid_t  pid;
-    pid = fork();
-
-    char *firstcmd[argsSize], *rest[argsSize];
-    char *separator = NULL;
-    // 1. determine the separator type
-    int i = 0, offset = 0;
-    while(args[i]) {
-    	if(!separator && (strcmp(args[i], "&&") == 0 || strcmp(args[i], "||") == 0)) {
-		separator = args[i];
-		offset = i+1;
-		args[i] = NULL;
-	} else if(offset != 0) {
-		rest[i-offset] = args[i];
-	}
-	i++;
-    }
-    if(offset > 0) {
-	rest[i-offset] = NULL;
-    }
-    // 2. parse first command/rest
-    
-        
-    if (pid < 0) {
-        fprintf (stderr, "Fork failed");
-    }
-    if (pid == 0) {
-        //Child process
-        if(strcmp(args[0], "cd") == 0){
-            //so that the || and && operators can be used on the cd command
-            chdir(args[1]);
-        }else if(strcmp(args[0], "exit") != 0){execvp(args[0], args);}
-	    perror(args[0]);
-	    exit(1);
-    }
-    else {
-        //Parent process
-        
-        //because cd and exit need to affect the parent, ie: the shell
-        if(strcmp(args[0], "cd") == 0){
-            chdir(args[1]);
-        }else if(strcmp(args[0], "exit") == 0){ return 0;}
-	    int waitError;
-        wait(&waitError);
-
-	    if(separator && strcmp(separator, "||") == 0 && waitError) {
-		    executeCommand(rest, argsSize-offset);
-	    }
-	    if(separator && strcmp(separator, "&&") == 0 && !waitError) {
-		    executeCommand(rest, argsSize-offset);
-	    }
-            fprintf (stdout, "Parent finished\n");
-        }
-    
-    return 1;
-}
-
-void parseSubcommand(char *args[], int argsSize, char *firstcmd[], char *rest[]) {
-	int isFirst = 1;
-	int firstcmdSize = 0;
-	for(int i=0; i<argsSize; i++) {
-		if(strcmp(args[i], "||") == 0 || strcmp(args[i], "&&") == 0) {
-			isFirst = 0;
-			firstcmdSize = i;
-		}
-		if(isFirst) {
-			firstcmd[i] = args[i];
-		}
-		else {
-			rest[i-(firstcmdSize+1)] = args[i];
-		}
-	}
 }
