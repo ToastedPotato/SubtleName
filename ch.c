@@ -223,7 +223,7 @@ int executeCommand(char *args[], int argsSize){
 			    separator = NULL;
 			    executeCommand(rest, argsSize-offset);
 		    }else if(strcmp(separator, "&&") == 0 && 
-		        (waitError == 0 || errno == 0)) {
+		        (waitError == 0)) {
 			    
 			    separator = NULL;
 			    executeCommand(rest, argsSize-offset);
