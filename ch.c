@@ -26,15 +26,13 @@ int main (void){
 
     /* ¡REMPLIR-ICI! : Lire les commandes de l'utilisateur et les exécuter. */
 
-    const char eq[2] = "=";
+    const char equal[2] = "=";
     
     int exitValue = 1;
         
     while(exitValue) {
         //shell loops until "exit" is entered
-        char *line = NULL;  //ugly variable declarations
-        //char *cmd = NULL; as of yet unused
-        //char *arg = NULL; as of yet unused
+        char *line = NULL;
         size_t length = 0;
         ssize_t read;
         
@@ -61,8 +59,8 @@ int main (void){
             exitValue = 0;
         }else if(strchr(line, '=')) {
             // 2. Gestion des variables
-            char *var = strtok(line, eq);
-            char *val = strtok(NULL, eq);
+            char *var = strtok(line, equal);
+            char *val = strtok(NULL, equal);
             setenv(var, val, 1);
             
         }else{
@@ -107,43 +105,11 @@ void ezParser(char *srcString, char *dstArray[], size_t dstSize, const char *del
 int bigBoyParser(char *line){
     //Va éventuellement parser les 4 opérateurs (=/&&/||/for)
     
-    const char s[2] = " ";
-    const char semiC[2] = ";";
+    const char space[2] = " ";
+    const char semiColon[2] = ";";
     int errorValue = 0;
     
-    if(strstr(line, "for ") == line){
-        
-        size_t len = strlen(line);
-        //Parsing for loops
-        if(strstr(line, "; done") == line+(len-6) && strstr(line, "; do") == strstr(line, ";")){
-            
-            //initialization and body of for in strings parsed differently
-            char *init = strtok(line, semiC);
-            char *body = strtok(NULL, "");                
-            body[strlen(body)-7] = '\0';
-            
-            //Parse arguments of for loop initialization
-            int spaces = delimCounter(init, s);
-            char *initArgs[spaces+1];
-            ezParser(init, initArgs, sizeof initArgs, s);
-            int initLen = sizeof(initArgs)/sizeof(initArgs[0]);
-                                           
-            //in the sentence "for i in A B C ..." the first value is 4th
-            for(int i = 3; i < initLen-1; i++){
-                
-                setenv(initArgs[1], initArgs[i], 1);
-                char copy[strlen(body)];
-                strcpy(copy, body);                
-                errorValue = bigBoyParser(copy+3);
-            }
-        
-        }else {
-            
-            errorValue = -1;
-            fprintf (stderr, "incorrect syntax in for statement\n");
-        }
-        
-    }else if(strstr(line, "&&") || strstr(line, "||")){
+    if(strstr(line, "&&") || strstr(line, "||")){
         
         //searching first occurences of && and ||
         int andOperator = (strstr(line, "&&") != NULL);
@@ -186,14 +152,52 @@ int bigBoyParser(char *line){
             
             bigBoyParser(rest+1);
         }
+        
+    }else if(strstr(line, "for ") == line){
+        
+        size_t len = strlen(line);
+        //Parsing for loops
+        if(strcmp(line+(len-6), "; done") == 0 && 
+            strstr(line, "; do") == strstr(line, ";")){
+            
+            //initialization and body of for in strings parsed differently
+            char *init = strtok(line, semiColon);
+            char *body = strtok(NULL, "");                
+            if (body[strlen(body)-7] == ' '){
+                
+                body[strlen(body)-7] = '\0';
+            }else{body[strlen(body)-6] = '\0';}
+            
+            //Parse arguments of for loop initialization
+            int spaces = delimCounter(init, space);
+            char *initArgs[spaces+1];
+            ezParser(init, initArgs, sizeof initArgs, space);
+            int initLen = sizeof(initArgs)/sizeof(initArgs[0]);
+                                           
+            //in the sentence "for i in A B C ..." the first value is 4th
+            for(int i = 3; i < initLen-1; i++){
+                
+                setenv(initArgs[1], initArgs[i], 1);
+                char copy[strlen(body)];
+                strcpy(copy, body);
+                            
+                errorValue = bigBoyParser(copy+4);
+            }
+        
+        }else {
+            
+            errorValue = -1;
+            fprintf (stderr, "incorrect syntax in for statement\n");
+        }
+        
     }else{
         
         //catch-all case for "simple" commands
-        int spaces = delimCounter(line, s);
+        int spaces = delimCounter(line, space);
             
         // Parse arguments
         char *args[spaces+2]; // +1 word than space, +1 for NULL at the end
-        ezParser(line, args, spaces+2, s);
+        ezParser(line, args, spaces+2, space);
                           
         errorValue = executeCommand(args, spaces+2);
     }
