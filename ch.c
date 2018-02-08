@@ -26,9 +26,8 @@ int main (void){
 
     /* ¡REMPLIR-ICI! : Lire les commandes de l'utilisateur et les exécuter. */
 
-    const char s[2] = " ";
     const char eq[2] = "=";
-    const char semiC[2] = ";";
+    
     int exitValue = 1;
         
     while(exitValue) {
@@ -39,7 +38,7 @@ int main (void){
         size_t length = 0;
         ssize_t read;
         
-        fprintf (stdout, "our-shell> ");
+        if (isatty(STDIN_FILENO)){fprintf (stdout, "\nour-shell> ");}
 
         // Read input from keyboard
         read = getline(&line, &length, stdin);
@@ -58,72 +57,20 @@ int main (void){
         //To avoid errors if the users types ENTER without entering a command
         if(strcmp(line, "\0") == 0){
         
+        }else if(strcmp(line, "exit") == 0){
+            exitValue = 0;
         }else if(strchr(line, '=')) {
             // 2. Gestion des variables
             char *var = strtok(line, eq);
             char *val = strtok(NULL, eq);
             setenv(var, val, 1);
             
-        }else if(strstr(line, "for ") == line){
-            //Handling for loops
-            if(strstr(line, "; done") == line+(len-6) && strstr(line, "; do") == strstr(line, ";")){
-                
-                //initialization and body of for in strings parsed differently
-                char *init = strtok(line, semiC);
-                char *body = strtok(NULL, "");
-                
-                //Parse arguments of for loop initialization
-                int spaces = delimCounter(init, s);
-                char *initArgs[spaces+1];
-                ezParser(init, initArgs, sizeof initArgs, s);
-                int initLen = sizeof(initArgs)/sizeof(initArgs[0]);
-                                    
-                // Parse arguments for loop body
-                int commands = delimCounter(body, semiC);
-                char *bodyArgs[commands+2];
-                ezParser(body, bodyArgs, sizeof bodyArgs, semiC);
-                                    
-                //in the sentence "for i in A B C ..." the first value is 4th
-                for(int i = 3; i < initLen-1; i++){
-                    
-                    setenv(initArgs[1], initArgs[i], 1);
-                    
-                    for(int j = 0; j < commands; j++){
-                                                       
-                        //Parse arguments of one command within loop body
-                        char copy[strlen(bodyArgs[j])];
-                        strcpy(copy, bodyArgs[j]);
-                        
-                        //skipping the "do"
-                        char *copy2 = copy+(3*(j == 0));
-                        
-                        int spcs = delimCounter(copy2, s);
-                        char *bodyCmd[spcs];
-                        ezParser(copy2, bodyCmd, spcs, s);
-                                                   
-                        executeCommand(bodyCmd, 
-                            sizeof(bodyCmd)/sizeof(bodyCmd[0]));
-                        
-                        
-                    }
-                    
-                }
-            
-            }else {fprintf (stderr, "incorrect syntax in for statement\n");}                   
-                
-            //Haven't found a more ingenious/efficient way to predict number of 
-            //tokens in the line aside from counting delimiters...yet 
-                        
-        }else {
-                       
-            int spaces = delimCounter(line, s);
-            
-            // Parse arguments
-            char *args[spaces+2]; // +1 word than space, +1 for NULL at the end
-            ezParser(line, args, spaces+2, s);
-                          
-            exitValue = executeCommand(args, spaces+2);
-        }
+        }else{
+        
+            bigBoyParser(line);    
+        }                    
+               
+        fflush(stdout);
     }
     fprintf (stdout, "Bye!\n");
     exit (0);
@@ -159,33 +106,104 @@ void ezParser(char *srcString, char *dstArray[], size_t dstSize, const char *del
 
 int bigBoyParser(char *line){
     //Va éventuellement parser les 4 opérateurs (=/&&/||/for)
-    return 0;
+    
+    const char s[2] = " ";
+    const char semiC[2] = ";";
+    int errorValue = 0;
+    
+    if(strstr(line, "for ") == line){
+        
+        size_t len = strlen(line);
+        //Parsing for loops
+        if(strstr(line, "; done") == line+(len-6) && strstr(line, "; do") == strstr(line, ";")){
+            
+            //initialization and body of for in strings parsed differently
+            char *init = strtok(line, semiC);
+            char *body = strtok(NULL, "");                
+            body[strlen(body)-7] = '\0';
+            
+            //Parse arguments of for loop initialization
+            int spaces = delimCounter(init, s);
+            char *initArgs[spaces+1];
+            ezParser(init, initArgs, sizeof initArgs, s);
+            int initLen = sizeof(initArgs)/sizeof(initArgs[0]);
+                                           
+            //in the sentence "for i in A B C ..." the first value is 4th
+            for(int i = 3; i < initLen-1; i++){
+                
+                setenv(initArgs[1], initArgs[i], 1);
+                char copy[strlen(body)];
+                strcpy(copy, body);                
+                errorValue = bigBoyParser(copy+3);
+            }
+        
+        }else {
+            
+            errorValue = -1;
+            fprintf (stderr, "incorrect syntax in for statement\n");
+        }
+        
+    }else if(strstr(line, "&&") || strstr(line, "||")){
+        
+        //searching first occurences of && and ||
+        int andOperator = (strstr(line, "&&") != NULL);
+        int orOperator = (strstr(line, "||") != NULL);
+        
+        char *command;
+        char *rest;
+        
+        if(andOperator == 1 && orOperator == 1){
+            
+            if(strstr(line, "&&") < strstr(line, "||")){
+                orOperator = 0;
+            }else{
+                andOperator = 0;
+            }
+        }
+        
+        //separating the commands before and after the operator
+        if(andOperator){
+            
+            command = strtok(line, "&");
+            rest = strtok(NULL, "&");
+            //replacing the remaining space at the end of command with \0
+            command[strlen(command)-1] = '\0';
+        }else{
+            
+            command = strtok(line, "|");
+            rest = strtok(NULL, "|");
+            //replacing the remaining space at the end of command with \0
+            command[strlen(command)-1] = '\0';
+        }
+              
+        int waitError = bigBoyParser(command);
+        
+        // Logique du && et ||            
+        if(andOperator && waitError == 0) {
+            
+            bigBoyParser(rest+1);	        
+        }else if (orOperator && waitError != 0){
+            
+            bigBoyParser(rest+1);
+        }
+    }else{
+        
+        //catch-all case for "simple" commands
+        int spaces = delimCounter(line, s);
+            
+        // Parse arguments
+        char *args[spaces+2]; // +1 word than space, +1 for NULL at the end
+        ezParser(line, args, spaces+2, s);
+                          
+        errorValue = executeCommand(args, spaces+2);
+    }
+    
+    return errorValue;
 }
 
 int executeCommand(char *args[], int argsSize){
     
-    // Trouve le premier separateur (si existe) et isole la premiere commande
-    char *rest[argsSize];
-    char *separator = NULL;
-    int i = 0, offset = 0;
-    
-    while(args[i]) {
-    	if(!separator && (strcmp(args[i], "&&") == 0 || 
-    	    strcmp(args[i], "||") == 0)) {
-		    
-		    separator = args[i];
-		    offset = i+1;
-		    args[i] = NULL;
-	    }else if(offset != 0) {
-		    rest[i-offset] = args[i];
-	    }
-	    i++;
-    }
-        
-    if(offset > 0) {
-	    rest[i-offset] = NULL;
-    }
-    
+    int waitError;   
     //1. Crée un processus qui exécute la commande
     pid_t  pid;
     pid = fork();
@@ -207,54 +225,13 @@ int executeCommand(char *args[], int argsSize){
     else {
         //Parent process
         
-        //because cd and exit need to affect the parent, ie: the shell
+        //because cd needs to affect the parent, ie: the shell
         if(strcmp(args[0], "cd") == 0){chdir(args[1]);
-        }else if(strcmp(args[0], "exit") == 0){return 0;}
-
-	    int waitError;
-        wait(&waitError);
+        }
         
-        // Logique du && et ||
-        //étant donné l'appel récursif de executeCommand, chercher le prochain
-        //séparateur n'est pas utile
-	    if(separator && rest[0]) {
-		    if(strcmp(separator, "||") == 0 && waitError) {
-			    
-			    separator = NULL;
-			    executeCommand(rest, argsSize-offset);
-		    }else if(strcmp(separator, "&&") == 0 && 
-		        (waitError == 0)) {
-			    
-			    separator = NULL;
-			    executeCommand(rest, argsSize-offset);
-		    }/*else {
-			    //Get next separator and command
-			    separator = NULL;
-			    int j = 0, nextOffset = 0;
-			    while(rest[j]) {
-				    
-				    if(!separator && 
-				        (strcmp(rest[j], "&&") == 0 || 
-				        strcmp(rest[j], "||") == 0) ) {
-					    
-					    separator = rest[j];
-					    nextOffset = j+1;
-					    offset += nextOffset;					    
-				    }else if (nextOffset > 0) {
-			            
-			            rest[j-nextOffset] = rest[j];
-				    }
-				    
-				    j++;
-			    }
-			    
-			    if(nextOffset > 0) {
-				    rest[j-nextOffset] = NULL;
-	        	}
-		    }*/
-	    }
-	    //TODO remove
-        fprintf (stdout, "Parent finished\n");
+        wait(&waitError);
+        	    
     }
-    return 1;
+    
+    return waitError;
 }
