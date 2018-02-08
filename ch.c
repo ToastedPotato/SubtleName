@@ -215,6 +215,8 @@ int executeCommand(char *args[], int argsSize){
         wait(&waitError);
         
         // Logique du && et ||
+        //étant donné l'appel récursif de executeCommand, chercher le prochain
+        //séparateur n'est pas utile
 	    if(separator && rest[0]) {
 		    if(strcmp(separator, "||") == 0 && waitError) {
 			    
