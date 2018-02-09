@@ -109,7 +109,44 @@ int bigBoyParser(char *line){
     const char semiColon[2] = ";";
     int errorValue = 0;
     
-    if(strstr(line, "&&") || strstr(line, "||")){
+    if(strstr(line, "for ") == line){
+        
+        size_t len = strlen(line);
+        //Parsing for loops
+        if(strcmp(line+(len-6), "; done") == 0 && 
+            strstr(line, "; do") == strstr(line, ";")){
+            
+            //initialization and body of for in strings parsed differently
+            char *init = strtok(line, semiColon);
+            char *body = strtok(NULL, "");                
+            if (body[strlen(body)-7] == ' '){
+                
+                body[strlen(body)-7] = '\0';
+            }else{body[strlen(body)-6] = '\0';}
+            
+            //Parse arguments of for loop initialization
+            int spaces = delimCounter(init, space);
+            char *initArgs[spaces+1];
+            ezParser(init, initArgs, sizeof initArgs, space);
+            int initLen = sizeof(initArgs)/sizeof(initArgs[0]);
+                                           
+            //in the sentence "for i in A B C ..." the first value is 4th
+            for(int i = 3; i < initLen-1; i++){
+                
+                setenv(initArgs[1], initArgs[i], 1);
+                char copy[strlen(body)];
+                strcpy(copy, body);
+        
+                errorValue = bigBoyParser(copy+4);
+            }
+        
+        }else {
+            
+            errorValue = -1;
+            fprintf (stderr, "incorrect syntax in for statement\n");
+        }
+        
+    }else if(strstr(line, "&&") || strstr(line, "||")){
         
         //searching first occurences of && and ||
         int andOperator = (strstr(line, "&&") != NULL);
@@ -151,43 +188,6 @@ int bigBoyParser(char *line){
         }else if (orOperator && waitError != 0){
             
             bigBoyParser(rest+1);
-        }
-        
-    }else if(strstr(line, "for ") == line){
-        
-        size_t len = strlen(line);
-        //Parsing for loops
-        if(strcmp(line+(len-6), "; done") == 0 && 
-            strstr(line, "; do") == strstr(line, ";")){
-            
-            //initialization and body of for in strings parsed differently
-            char *init = strtok(line, semiColon);
-            char *body = strtok(NULL, "");                
-            if (body[strlen(body)-7] == ' '){
-                
-                body[strlen(body)-7] = '\0';
-            }else{body[strlen(body)-6] = '\0';}
-            
-            //Parse arguments of for loop initialization
-            int spaces = delimCounter(init, space);
-            char *initArgs[spaces+1];
-            ezParser(init, initArgs, sizeof initArgs, space);
-            int initLen = sizeof(initArgs)/sizeof(initArgs[0]);
-                                           
-            //in the sentence "for i in A B C ..." the first value is 4th
-            for(int i = 3; i < initLen-1; i++){
-                
-                setenv(initArgs[1], initArgs[i], 1);
-                char copy[strlen(body)];
-                strcpy(copy, body);
-                            
-                errorValue = bigBoyParser(copy+4);
-            }
-        
-        }else {
-            
-            errorValue = -1;
-            fprintf (stderr, "incorrect syntax in for statement\n");
         }
         
     }else{
