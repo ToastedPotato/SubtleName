@@ -1,6 +1,6 @@
 /* ch.c.
 auteurs:
-Amélie Lacombe Robillard (*insérer matricule ici*)
+Amélie Lacombe Robillard (20016735)
 Christophe Apollon-Roy (920403)
 date:
 10/02/2018
