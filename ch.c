@@ -15,6 +15,7 @@ problèmes connus:
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
+#include <ctype.h>
 
 int delimCounter(char *string, const char *delim);
 
@@ -96,10 +97,36 @@ void ezParser(char *srcString, char *dstArray[],
     
     while(token) {
         // Check if token is a variable
-        if(token[0] == '$') {
-          token = getenv(token+1);
-        }
-        dstArray[j] = token;
+        //if(token[0] == '$') {
+        //  token = getenv(token+1);
+        //}
+	char* pt =  strchr(token, '$');
+	if(pt) {
+		size_t tklen = strlen(token);
+		char var[tklen];
+		int k=0;
+		pt[0] = '\0';
+		pt++;
+		while(pt[0] != '\0' && (isalnum(pt[0]) || pt[0] == '_')) {
+			var[k]=pt[0];
+			pt++;
+			k++;
+		}
+		var[k] = '\0';
+		fprintf(stdout, var);
+		char* val = getenv(var);
+		//token = getenv(var);
+		size_t newlen = tklen - k + strlen(val);
+		char newToken[newlen];
+		strcpy(newToken, token);
+		strcat(newToken, val);
+		strcat(newToken, pt);
+		dstArray[j] = (char*)malloc(sizeof(char) * (strlen(newToken) + 1));
+		strcpy(dstArray[j], newToken);
+	} else {
+
+		dstArray[j] = token;
+	}
         token = strtok(NULL, delim);
         j++;
     }
