@@ -15,7 +15,8 @@ problèmes connus:
 
 int delimCounter(char *string, const char *delim);
 
-void ezParser(char *srcString, char *dstArray[], size_t dstSize, const char *delim);
+void ezParser(char *srcString, char *dstArray[], 
+    size_t dstSize, const char *delim);
 
 int bigBoyParser(char *line);
 
@@ -84,7 +85,8 @@ int delimCounter(char *string, const char *delim){
     return separators;
 }
 
-void ezParser(char *srcString, char *dstArray[], size_t dstSize, const char *delim){
+void ezParser(char *srcString, char *dstArray[], 
+    size_t dstSize, const char *delim){
     //tokenizes a string to a destination array according to a delimiter
     int j=0;
     char *token = strtok(srcString, delim);
