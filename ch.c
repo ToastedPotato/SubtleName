@@ -26,6 +26,8 @@ int bigBoyParser(char *line);
 
 int executeCommand(char *args[], int argsSize);
 
+char *resolveVar(char *token, char *pt);
+
 int main (void){
     fprintf (stdout, "%% ");
 
@@ -96,37 +98,13 @@ void ezParser(char *srcString, char *dstArray[],
     char *token = strtok(srcString, delim);
     
     while(token) {
-        // Check if token is a variable
-        //if(token[0] == '$') {
-        //  token = getenv(token+1);
-        //}
+        // Check if token contains a variable
 	char* pt =  strchr(token, '$');
-	if(pt) {
-		size_t tklen = strlen(token);
-		char var[tklen];
-		int k=0;
-		pt[0] = '\0';
-		pt++;
-		while(pt[0] != '\0' && (isalnum(pt[0]) || pt[0] == '_')) {
-			var[k]=pt[0];
-			pt++;
-			k++;
-		}
-		var[k] = '\0';
-		fprintf(stdout, var);
-		char* val = getenv(var);
-		//token = getenv(var);
-		size_t newlen = tklen - k + strlen(val);
-		char newToken[newlen];
-		strcpy(newToken, token);
-		strcat(newToken, val);
-		strcat(newToken, pt);
-		dstArray[j] = (char*)malloc(sizeof(char) * (strlen(newToken) + 1));
-		strcpy(dstArray[j], newToken);
-	} else {
-
-		dstArray[j] = token;
+	while(pt) {
+		token = resolveVar(token, pt);
+		pt = strchr(token, '$');
 	}
+	dstArray[j] = token;
         token = strtok(NULL, delim);
         j++;
     }
@@ -272,4 +250,30 @@ int executeCommand(char *args[], int argsSize){
     }
     
     return waitError;
+}
+
+char *resolveVar(char *token, char *pt) {
+	// Resolve one variable occurence in a string at pointer position pt
+	size_t tklen = strlen(token);
+	char var[tklen];
+	int k=0;
+	pt[0] = '\0';
+	pt++;
+	// Read variable until invalid character or end of string
+	while(pt[0] != '\0' && (isalnum(pt[0]) || pt[0] == '_')) {
+		var[k]=pt[0];
+		pt++;
+		k++;
+	}
+	var[k] = '\0';
+	char* val = getenv(var);
+
+	// Rebuild new string with variable value
+	size_t newlen = tklen - k + strlen(val);
+	char *newToken = malloc(newlen+1);
+	strcpy(newToken, token);
+	strcat(newToken, val);
+	strcat(newToken, pt);
+
+	return newToken;
 }
