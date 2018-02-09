@@ -61,7 +61,7 @@ int main (void){
         
         }else if(strcmp(line, "exit") == 0){
             exitValue = 0;
-        }else if(strchr(line, '=')) {
+        }else if(strchr(line, '=') && strchr(line, ' ') == NULL) {
             // 2. Gestion des variables
             char *var = strtok(line, equal);
             char *val = strtok(NULL, equal);
@@ -215,6 +215,7 @@ int executeCommand(char *args[], int argsSize){
         fprintf (stderr, "Fork failed");
     }
     if (pid == 0) {
+        
         //Child process
         if(strcmp(args[0], "cd") == 0){
             //so that the || and && operators can be used on the cd command
