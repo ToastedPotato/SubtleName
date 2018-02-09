@@ -218,7 +218,10 @@ int executeCommand(char *args[], int argsSize){
         //Child process
         if(strcmp(args[0], "cd") == 0){
             //so that the || and && operators can be used on the cd command
-            chdir(args[1]);
+            if(args[1] == NULL){
+                chdir(getenv("HOME"));
+            }else{chdir(args[1]);}
+            
         }else if(strcmp(args[0], "exit") != 0){execvp(args[0], args);}
 	    
 	    perror(args[0]);
@@ -232,7 +235,10 @@ int executeCommand(char *args[], int argsSize){
         //because cd needs to affect the parent, ie: the shell
         if(strcmp(args[0], "cd") == 0){
             
-            chdir(args[1]);
+            if(args[1] == NULL){
+                chdir(getenv("HOME"));
+            }else{chdir(args[1]);}
+            
             waitError = errno;
         }	    
     }
