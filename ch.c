@@ -1,6 +1,9 @@
 /* ch.c.
-auteur:
+auteurs:
+Amélie Lacombe Robillard (*insérer matricule ici*)
+Christophe Apollon-Roy (920403)
 date:
+10/02/2018
 problèmes connus:
 
   */
@@ -65,7 +68,7 @@ int main (void){
             setenv(var, val, 1);
             
         }else{
-        
+            //Parses complex commands including for, && and ||
             bigBoyParser(line);    
         }                    
                
@@ -76,7 +79,7 @@ int main (void){
 }
 
 int delimCounter(char *string, const char *delim){
-    //Counts number of delimiters in a string. Useful for parsing all the things
+    //Counts number of delimiters in a string. Used for parsing all the things
     size_t len  = strlen(string);
     int i, separators;
     for (i=0, separators=0; i < len; i++) {
@@ -105,48 +108,41 @@ void ezParser(char *srcString, char *dstArray[],
 }
 
 int bigBoyParser(char *line){
-    //Va éventuellement parser les 4 opérateurs (=/&&/||/for)
+    //Parses all the things
     
     const char space[2] = " ";
     const char semiColon[2] = ";";
     int errorValue = 0;
     
-    if(strstr(line, "for ") == line){
-        
-        size_t len = strlen(line);
-        //Parsing for loops
-        if(strcmp(line+(len-6), "; done") == 0 && 
-            strstr(line, "; do") == strstr(line, ";")){
+    if(strstr(line, "for ") == line && 
+        strcmp(line+(strlen(line)-6), "; done") == 0 && 
+        strstr(line, "; do") == strstr(line, ";")){
+
+        //Parsing for loops        
             
-            //initialization and body of for in strings parsed differently
-            char *init = strtok(line, semiColon);
-            char *body = strtok(NULL, "");                
-            if (body[strlen(body)-7] == ' '){
-                
-                body[strlen(body)-7] = '\0';
-            }else{body[strlen(body)-6] = '\0';}
+        //initialization and body of for in strings parsed differently
+        char *init = strtok(line, semiColon);
+        char *body = strtok(NULL, "");                
+        if (body[strlen(body)-7] == ' '){
             
-            //Parse arguments of for loop initialization
-            int spaces = delimCounter(init, space);
-            char *initArgs[spaces+1];
-            ezParser(init, initArgs, sizeof initArgs, space);
-            int initLen = sizeof(initArgs)/sizeof(initArgs[0]);
-                                           
-            //in the sentence "for i in A B C ..." the first value is 4th
-            for(int i = 3; i < initLen-1; i++){
-                
-                setenv(initArgs[1], initArgs[i], 1);
-                char copy[strlen(body)];
-                strcpy(copy, body);
+            body[strlen(body)-7] = '\0';
+        }else{body[strlen(body)-6] = '\0';}
         
-                errorValue = bigBoyParser(copy+4);
-            }
-        
-        }else {
+        //Parse arguments of for loop initialization
+        int spaces = delimCounter(init, space);
+        char *initArgs[spaces+1];
+        ezParser(init, initArgs, sizeof initArgs, space);
+        int initLen = sizeof(initArgs)/sizeof(initArgs[0]);
+                                       
+        //in "for i in A B C ..." the first value is 4th in the array
+        for(int i = 3; i < initLen-1; i++){
             
-            errorValue = -1;
-            fprintf (stderr, "incorrect syntax in for statement\n");
-        }
+            setenv(initArgs[1], initArgs[i], 1);
+            char copy[strlen(body)];
+            strcpy(copy, body);
+    
+            errorValue = bigBoyParser(copy+4);
+        }       
         
     }else if(strstr(line, "&&") || strstr(line, "||")){
         
@@ -197,8 +193,8 @@ int bigBoyParser(char *line){
         //catch-all case for "simple" commands
         int spaces = delimCounter(line, space);
             
-        // Parse arguments
-        char *args[spaces+2]; // +1 word than space, +1 for NULL at the end
+        //Parse arguments. There's +1 word than spaces, +1 for NULL at the end
+        char *args[spaces+2]; 
         ezParser(line, args, spaces+2, space);
                           
         errorValue = executeCommand(args, spaces+2);
@@ -230,13 +226,15 @@ int executeCommand(char *args[], int argsSize){
     }
     else {
         //Parent process
+                
+        wait(&waitError);
         
         //because cd needs to affect the parent, ie: the shell
-        if(strcmp(args[0], "cd") == 0){chdir(args[1]);
-        }
-        
-        wait(&waitError);
-        	    
+        if(strcmp(args[0], "cd") == 0){
+            
+            chdir(args[1]);
+            waitError = errno;
+        }	    
     }
     
     return waitError;
