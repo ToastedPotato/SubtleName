@@ -242,7 +242,7 @@ int executeCommand(char *args[], int argsSize){
         //Parent process
                 
         wait(&waitError);
-        
+                
         //because cd and exit must affect the parent, ie: this shell
         if(strcmp(args[0], "cd") == 0){
             
