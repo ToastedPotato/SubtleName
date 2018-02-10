@@ -32,8 +32,6 @@ int main (void){
     fprintf (stdout, "%% ");
 
     /* ¡REMPLIR-ICI! : Lire les commandes de l'utilisateur et les exécuter. */
-
-    const char equal[2] = "=";
     
     int exitValue = 1;
         
@@ -62,20 +60,12 @@ int main (void){
         //To avoid errors if the users types ENTER without entering a command
         if(strcmp(line, "\0") == 0){
         
-        }else if(strcmp(line, "exit") == 0){
-            exitValue = 0;
-        }else if(strchr(line, '=') && strchr(line, ' ') == NULL) {
-            // 2. Gestion des variables
-            char *var = strtok(line, equal);
-            char *val = strtok(NULL, equal);
-            setenv(var, val, 1);
-            
         }else{
             //Parses complex commands including for, && and ||
             bigBoyParser(line);    
         }                    
-               
-        fflush(stdout);
+        
+        free(line);       
     }
     
     fprintf (stdout, "Bye!\n");
@@ -89,6 +79,7 @@ int delimCounter(char *string, const char *delim){
     for (i=0, separators=0; i < len; i++) {
         separators += (string[i] == *delim);
     }
+    
     return separators;
 }
 
@@ -100,17 +91,19 @@ void ezParser(char *srcString, char *dstArray[],
     
     while(token) {
         // Check if token contains a variable
-	char* pt =  strchr(token, '$');
-	while(pt) {
-		token = resolveVar(token, pt);
-		pt = strchr(token, '$');
-	}
-	dstArray[j] = token;
+	    char* pt =  strchr(token, '$');
+	    while(pt) {
+		
+		    token = resolveVar(token, pt);
+		    pt = strchr(token, '$');
+	    }
+	    
+	    dstArray[j] = token;
         token = strtok(NULL, delim);
         j++;
     }
-    dstArray[j] = NULL;
-
+    
+    dstArray[j] = NULL;    
 }
 
 int bigBoyParser(char *line){
@@ -120,7 +113,14 @@ int bigBoyParser(char *line){
     const char semiColon[2] = ";";
     int errorValue = 0;
     
-    if(strstr(line, "for ") == line && 
+    if(strchr(line, '=') && strchr(line, ' ') == NULL) {
+        //Assigning variables
+        const char equal[2] = "=";
+        char *var = strtok(line, equal);
+        char *val = strtok(NULL, equal);
+        errorValue = setenv(var, val, 1);
+                    
+    }else if(strstr(line, "for ") == line && 
         strcmp(line+(strlen(line)-6), "; done") == 0 && 
         strstr(line, "; do") == strstr(line, ";")){
 
@@ -144,13 +144,15 @@ int bigBoyParser(char *line){
         //in "for i in A B C ..." the first value is 4th in the array
         for(int i = 3; i < initLen-1; i++){
             
-            setenv(initArgs[1], initArgs[i], 1);
+            setenv(initArgs[1], initArgs[i], 0);
             char copy[strlen(body)];
             strcpy(copy, body);
     
             errorValue = bigBoyParser(copy+4);
-        }       
-        
+            
+            unsetenv(initArgs[1]);
+        }
+                       
     }else if(strstr(line, "&&") || strstr(line, "||")){
         
         //searching first occurences of && and ||
@@ -205,6 +207,7 @@ int bigBoyParser(char *line){
         ezParser(line, args, spaces+2, space);
                           
         errorValue = executeCommand(args, spaces+2);
+        
     }
     
     return errorValue;
